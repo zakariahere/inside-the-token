@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "explainer",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "uvicorn", "app.main:app", "--port", "8000", "--reload", "--reload-dir", "app", "--reload-dir", "llm_from_scratch"],
+      "port": 8000
+    }
+  ]
+}

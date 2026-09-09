@@ -1,70 +1,196 @@
+<div align="center">
+
 # Inside the Token
 
-A local, interactive companion to chapters 1–3 of Sebastian Raschka’s *Build a Large Language Model (From Scratch)*. Follow one token through a calculation, then expand to all rows and the actual PyTorch code.
+### Understand an LLM, one operation at a time.
 
-The alternative lives on `codex/inside-the-token`; `master` retains the original app at `e28dc90`.
+An interactive textbook for **tokenization, embeddings, and attention**.<br>
+Follow one token through real calculations, then connect the numbers to PyTorch.
 
-## Run locally
+**Python 3.13 · PyTorch · FastAPI · Vanilla JavaScript · Runs locally**
 
-```powershell
+[Quick start](#quick-start) · [Learning path](#learning-path) · [How it works](#how-it-works) · [Development](#development)
+
+</div>
+
+---
+
+## Start with “bank,” not a wall of matrices
+
+What happens to one token inside an attention layer? Where does each number come from? Why do we divide by a square root—and what changes when we hide future tokens?
+
+Inside the Token turns those questions into small, interactive lessons inspired by chapters 1–3 of Sebastian Raschka’s *Build a Large Language Model (From Scratch)*.
+
+- **Follow one token.** Select a token, inspect its vectors, and see how its context changes.
+- **Open the arithmetic.** Click an output component to reveal the products and sums behind it.
+- **Change one thing.** Compare scaled scores, causal masks, dropout draws, and attention heads.
+- **Connect it to code.** Expand the math, a focused PyTorch excerpt, or the actual full class.
+- **Learn at your pace.** Manual steps, optional checks, saved lesson positions, and a responsive light interface.
+
+```mermaid
+flowchart LR
+    T[Text] --> I[Token IDs]
+    I --> X[Token + position vectors]
+    X --> Q[Query]
+    X --> K[Key]
+    X --> V[Value]
+    Q --> S[Compare & scale]
+    K --> S
+    S --> M[Causal mask]
+    M --> A[Softmax weights]
+    A --> C[Weighted mixture]
+    V --> C
+    style Q fill:#e5f3ed,stroke:#096b62,color:#096b62
+    style K fill:#faeee9,stroke:#ac4639,color:#ac4639
+    style V fill:#edf4e5,stroke:#447131,color:#447131
+    style C fill:#fbf2d9,stroke:#93600e,color:#93600e
+```
+
+> **Real arithmetic, clearly labeled examples.** The guided lessons distinguish hand-picked values, the book’s constants, random weights, and trained GPT-2 weights. Toy examples explain the mechanism; they do not demonstrate learned word meanings.
+
+## Quick start
+
+**Requirements:** Git and [uv](https://docs.astral.sh/uv/). The project targets Python 3.13 and CPU-only PyTorch. No frontend build or Node.js installation is needed.
+
+```sh
+git clone https://github.com/zakariahere/inside-the-token.git
+cd inside-the-token
 uv sync --group dev
-uv run python scripts/fetch_data.py
 uv run uvicorn app.main:app --port 8001
 ```
 
-Open <http://127.0.0.1:8001>. Add `--reload` while developing. Python 3.13 and CPU-only PyTorch are configured in `pyproject.toml`. The frontend is plain JavaScript and CSS: no Node install or frontend build is required.
+Open **[http://127.0.0.1:8001](http://127.0.0.1:8001)** and choose a lesson. The commands work in PowerShell and common Unix shells.
 
-The sample text is optional; choose your own text if it has not been downloaded. GPT-2 mode requires a cached checkpoint. To download it deliberately:
+<details>
+<summary><strong>Optional: the book’s sample text</strong></summary>
 
-```powershell
+```sh
+uv run python scripts/fetch_data.py
+```
+
+This downloads *The Verdict* to `data/`. Choose it in the input selector, or keep using your own text. Downloaded data is excluded from Git.
+
+</details>
+
+<details>
+<summary><strong>Optional: explore trained GPT-2 weights</strong></summary>
+
+Download the checkpoint into the HuggingFace cache:
+
+```sh
 uv run python -c "from huggingface_hub import hf_hub_download; hf_hub_download('gpt2', 'model.safetensors')"
 ```
 
+Then select **Explore → Weights → GPT-2** in the embeddings or multi-head lesson. The attention view exposes the first block’s 12 heads. The checkpoint stays in your local cache and is not part of this repository.
+
+Core lessons work without this download. GPT-2 exploration runs embeddings and one attention block, not a complete text generator.
+
+</details>
+
 ## Learning path
 
-1. **The bigger picture** — prediction, training versus generation, and where attention fits.
-2. **Text → tokens** — actual GPT-2 IDs, raw bytes, Unicode, and a separate illustrative BPE merge.
-3. **Inputs & targets** — move a training window, shift targets, change stride, inspect a batch.
-4. **Embeddings & position** — lookup rows and inspect individual component sums.
-5. **Why attention?** — the book’s simplified example, one query at a time.
-6. **Queries, keys & values** — the hand-picked `The / bank / river` example from the learning notes.
-7. **Scores → softmax** — scaling comparisons, stable exponentiation, and weighted contributions.
-8. **Causal attention** — mask future positions before softmax and rebuild the context vector.
-9. **Dropout & batches** — seeded independent masks, survivor scaling, evaluation mode, tensor axes.
-10. **Multiple heads** — the book’s small example, slices, concatenation, projection, and GPT-2 exploration.
+| Chapter | Lesson | What you can do |
+| :--- | :--- | :--- |
+| **1 · The big picture** | What an LLM does | Separate training from generation and locate attention in the model. |
+| **2 · Working with text** | Text → tokens | Inspect actual GPT-2 IDs, bytes, Unicode fragments, and decoding. |
+| | Inputs & targets | Move a window, shift targets, change stride, and inspect a batch. |
+| | Embeddings & position | Look up rows and inspect each component of their sum. |
+| **3 · Attention** | Why attention? | Build one context vector from the book’s simplified example. |
+| | Queries, keys & values | Project “bank” into three roles, one dot product at a time. |
+| | Scores → softmax | Compare scaling, inspect stable softmax, and mix values. |
+| | Causal attention | Block future positions and watch the output change. |
+| | Dropout & batches | Resample masks, compare evaluation, and follow tensor axes. |
+| | Multiple heads | Split, attend, concatenate, and apply the output projection. |
 
-Use **Next step / Back** at your own pace; no autoplay or mandatory quizzes. Select tokens, matrix cells, or output components to inspect a calculation. Math and code disclosures provide more depth. **Explore** exposes custom inputs and model controls. Lesson positions are stored locally in this browser; the current text is session-only. Old `#ch03-self` style links map to the new lessons.
+Each guided lesson offers **See the math**, **See the PyTorch**, and one optional **prediction-and-reveal check**. Explore mode exposes custom text and relevant model controls.
 
-## Calculations and boundaries
+### A small example that stays with you
 
-- The book classes and existing API shapes remain intact. Original endpoint tensor values are rounded to four decimals and displayed calculations are marked approximate.
-- `POST /api/lessons/bank-attention` accepts `scaling`, `causal`, `dropout` (0–0.9), `training`, and `seed`. It returns the fixed inputs and projection matrices, Q/K/V, raw/scaled/masked scores, stable-softmax intermediates, pre/post-dropout weights, masks, weighted contributions, row sums, and outputs at full precision.
-- `GET /api/lessons/code` returns the actual source of `SelfAttention_v2`, `CausalAttention`, and `MultiHeadAttention` for the full-class disclosures.
-- The bank fixture uses the existing `SelfAttention_v2` and trace helper. Unscaled comparisons and explicit dropout masks are teaching logic outside the book classes. Each dropout request uses a local seeded generator.
-- Hand-picked and random examples illustrate arithmetic, not learned semantics. GPT-2 exploration loads trained embeddings and block-0 attention; it does not run a complete text generator. The overview’s probabilities and BPE merge illustration are labeled illustrations.
-- Masked values serialize as `"-inf"`. Attention inputs are capped at 64 tokens; expanded large matrices scroll locally. GPT-2 and other large vectors show a labeled subset of components while the backend computes all dimensions.
-- All user text is inserted with text nodes. Byte fragments are shown honestly rather than mapped to incorrect character offsets.
-
-## Layout
+For the hand-picked sequence `The / bank / river`, bank’s query is `[0, 2]`. Comparing it with all three keys gives raw scores:
 
 ```text
-frontend/js/textbook/content.js      Lesson prose, steps, math, code excerpts, checks
-frontend/js/textbook/components.js   Accessible text-safe UI and numeric components
-frontend/js/textbook/scenes.js       API data flow and lesson-specific interactions
-frontend/js/textbook/app.js          Navigation, progress, state, disclosures, errors
-frontend/css/textbook.css            Responsive light textbook theme
-app/lessons.py                      Hand-picked fixture and source-code endpoints
-llm_from_scratch/                   Original book code, traces, GPT-2 mappings
+                  The    bank    river
+bank’s scores      6       6       8
 ```
 
-The original scene modules remain in the tree for reference; the new entrypoint does not import them.
+From there, the app shows every step: divide by √2, apply softmax, and blend the value vectors. Turn on causal masking and the future token `river` becomes unavailable:
 
-## Verification
+```text
+masked scores    [6, 6, −∞]
+causal weights   [0.5, 0.5, 0]
+```
 
-```powershell
+The numbers are small enough to check by hand. The operations are the same ones used in the larger PyTorch examples.
+
+## How it works
+
+**The browser teaches; Python computes.** A FastAPI backend runs the book’s attention classes and returns intermediate tensors. Small, reusable frontend components display token chips, matrices, attention bars, and arithmetic.
+
+| Layer | Responsibility |
+| :--- | :--- |
+| `llm_from_scratch/` | Book implementations, trace helpers, and GPT-2 weight mapping |
+| `app/` | API validation, tensor serialization, and the hand-picked teaching fixture |
+| `frontend/js/textbook/` | Lesson content, state, reusable components, and interactions |
+| `frontend/css/textbook.css` | Responsive light theme and reduced-motion styling |
+| `tests/` | Numerical contracts, API checks, reference comparisons, and browser QA notes |
+
+**Numerical details**
+
+- The book’s implementations remain intact; traces check agreement with their forward passes.
+- The bank fixture retains full floating-point precision. The original APIs return rounded values; displayed arithmetic is marked approximate where appropriate.
+- Future scores use `−∞`; their softmax weights become zero. Dropout operates afterward and does **not** renormalize the surviving weights.
+- User text is inserted through text nodes. Byte fragments are displayed without pretending each token is a complete Unicode character.
+- Attention text inputs use at most 64 tokens. Larger vectors show a labeled subset of dimensions while Python computes the full result.
+
+<details>
+<summary><strong>API reference</strong></summary>
+
+| Endpoint | Purpose |
+| :--- | :--- |
+| `GET /api/health` | Runtime, sample-data, and GPT-2 cache availability |
+| `POST /api/ch02/tokenize` | Token IDs, text previews, bytes, and decoding |
+| `POST /api/ch02/windows` | Training pairs and first DataLoader batch |
+| `POST /api/ch02/embed` | Token, position, and combined embeddings |
+| `POST /api/ch03/simple` | Simplified attention |
+| `POST /api/ch03/self` | Trainable Q/K/V attention |
+| `POST /api/ch03/causal` | Causal masking and dropout |
+| `POST /api/ch03/mha` | Per-head attention and output projection |
+| `POST /api/lessons/bank-attention` | Full-precision hand-picked learning example |
+| `GET /api/lessons/code` | Actual source of the three attention classes |
+
+The bank endpoint accepts `scaling`, `causal`, `dropout` (0–0.9), `training`, and `seed`. It returns inputs, projection matrices, Q/K/V, intermediate scores, softmax values, dropout masks, weighted contributions, and outputs. JSON represents negative infinity as `"-inf"`.
+
+Open [FastAPI’s interactive API documentation](http://127.0.0.1:8001/docs) while the app is running.
+
+</details>
+
+## Development
+
+```sh
+# Reload the backend as Python files change
+uv run uvicorn app.main:app --port 8001 --reload
+
+# Run the numerical and API tests
 uv run pytest -q
 ```
 
-The suite covers book numbers, API shapes, trace/forward agreement, GPT-2/HuggingFace agreement when cached, and the teaching fixture’s projections, softmax, masking, dropout, precision, and error handling. The GPT-2 reference tests may need HuggingFace tokenizer/config assets on first use.
+Refresh the browser after frontend edits. No bundle step is required.
 
-Browser acceptance: walk every guided step; exercise Explore; inspect a projection component; toggle scaling; resample dropout; switch evaluation mode; select GPT-2 head 11; test Unicode and literal HTML text; try invalid head dimensions and short text; reload to check progress; inspect desktop, tablet, and mobile layouts. See `tests/browser-qa.md` for the recorded pass.
+The latest local verification passed **44 tests**, including the original book-value and GPT-2 reference checks. GPT-2 tests skip when the checkpoint is unavailable; their first run may also need tokenizer/config assets from HuggingFace.
+
+Browser checks cover all 44 guided steps, Explore views, arithmetic selection, scaling, dropout, Unicode text, error recovery, saved progress, and desktop/tablet/mobile layouts. See [the browser acceptance record](tests/browser-qa.md) for details and testing limits.
+
+### Branches
+
+| Branch | Version |
+| :--- | :--- |
+| **`codex/inside-the-token`** | Default branch: the interactive textbook |
+| `master` | Original scene-based app, preserved at `e28dc90` |
+
+The original frontend modules remain in the tree for reference; the textbook entrypoint does not import them. Existing `#ch03-self` style links map to the replacement lessons.
+
+## Credits & scope
+
+This independent learning companion builds on Sebastian Raschka’s [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) material and uses [PyTorch](https://pytorch.org/), [tiktoken](https://github.com/openai/tiktoken), and GPT-2 weights from HuggingFace.
+
+It covers the path through causal multi-head attention. Full transformer blocks, pretraining, fine-tuning, and complete text generation belong to later chapters.

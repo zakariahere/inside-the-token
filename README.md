@@ -184,8 +184,10 @@ Browser checks cover all 44 guided steps, Explore views, arithmetic selection, s
 
 | Branch | Version |
 | :--- | :--- |
-| **`codex/inside-the-token`** | Default branch: the interactive textbook |
-| `master` | Original scene-based app, preserved at `e28dc90` |
+| **`master`** | Default branch: the interactive textbook |
+| `codex/inside-the-token` | Development branch for the textbook redesign |
+
+The original scene-based app remains available in Git history at commit `e28dc90`.
 
 The original frontend modules remain in the tree for reference; the textbook entrypoint does not import them. Existing `#ch03-self` style links map to the replacement lessons.
 

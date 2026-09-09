@@ -4,6 +4,7 @@ from pathlib import Path
 import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 from llm_from_scratch import gpt2_weights
 from llm_from_scratch.ch02_data import (build_embeddings, create_dataloader_v1,
@@ -14,6 +15,7 @@ from llm_from_scratch.trace import (trace_causal, trace_multihead,
                                     trace_self_attention, trace_simple)
 
 from . import registry
+from .lessons import router as lesson_router
 from .schemas import (MAX_TOKENS, MHA_FIELDS, CausalRequest, EmbedRequest,
                       MHARequest, SelfAttnRequest, SimpleRequest,
                       TokenizeRequest, WindowsRequest)
@@ -24,6 +26,12 @@ torch.set_grad_enabled(False)
 
 FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 app = FastAPI(title="LLM From Scratch Explainer", version="0.1.0")
+app.include_router(lesson_router)
+
+
+@app.exception_handler(FileNotFoundError)
+async def missing_data(_request, _exc):
+    return JSONResponse(status_code=503, content={"detail": "Sample data is missing. Run: uv run python scripts/fetch_data.py, or choose your own text."})
 
 
 # --------------------------------------------------------------------------- #
@@ -82,6 +90,8 @@ def windows(req: WindowsRequest):
 
 @app.post("/api/ch02/embed")
 def embed(req: EmbedRequest):
+    if req.weights == "gpt2" and not gpt2_weights.gpt2_cached():
+        raise HTTPException(503, "GPT-2 weights are not cached. Choose random weights, or download gpt2/model.safetensors with huggingface_hub first.")
     text = registry.resolve_text(req.source, req.text)
     dl = create_dataloader_v1(text, batch_size=req.batch_size, max_length=req.max_length,
                               stride=req.stride, shuffle=False, drop_last=False)
@@ -112,6 +122,8 @@ def embed(req: EmbedRequest):
 
 # ----------------------------- chapter 3 ----------------------------------- #
 def _inputs(req):
+    if req.weights == "gpt2" and req.source != "book" and not gpt2_weights.gpt2_cached():
+        raise HTTPException(503, "GPT-2 weights are not cached. Choose random weights, or download gpt2/model.safetensors with huggingface_hub first.")
     try:
         return registry.make_inputs(req.source, req.text, req.emb_dim, req.seed, req.weights)
     except ValueError as e:
@@ -192,7 +204,7 @@ def causal(req: CausalRequest):
 def mha(req: MHARequest):
     if req.weights == "gpt2":
         if not gpt2_weights.gpt2_cached():
-            raise HTTPException(503, "GPT-2 weights not cached; run once with internet")
+            raise HTTPException(503, "GPT-2 weights are not cached. Choose random weights, or download gpt2/model.safetensors with huggingface_hub first.")
         x, tokens, meta = _inputs(req)
         module = gpt2_weights.build_gpt2_mha()
         ln_applied = bool(req.apply_ln1)

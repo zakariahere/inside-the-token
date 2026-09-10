@@ -127,15 +127,33 @@ async function render() {
   document.title = `${l.title} · Inside the Token`;
   document.querySelector("#breadcrumb").textContent =
     `CHAPTER ${l.chapter} / ${l.nav.toUpperCase()}`;
+  const intro = p(l.intro);
+  intro.className = "intro";
   const heading = el(
     "section",
     { class: "lesson-heading" },
-    el("span", { class: "lesson-count" }, String(index + 1).padStart(2, "0")),
-    el("div", { class: "eyebrow" }, `CHAPTER ${l.chapter} · §${l.section}`),
-    el("h1", {}, l.title),
-    p(l.intro),
+    el(
+      "div",
+      { class: "lesson-heading-copy" },
+      el("span", { class: "lesson-count" }, String(index + 1).padStart(2, "0")),
+      el("div", { class: "eyebrow" }, `CHAPTER ${l.chapter} · §${l.section}`),
+      el("h1", {}, l.title),
+      intro,
+    ),
+    el(
+      "div",
+      { class: "lesson-guide" },
+      el("img", {
+        class: "lesson-mascot",
+        src: "assets/zak-hoodie.webp",
+        alt: "Pixel-art Zakaria in a navy hoodie, waving with a laptop",
+        width: "368",
+        height: "560",
+        decoding: "async",
+      }),
+      el("span", { class: "guide-caption" }, "YOUR GUIDE THROUGH THE TENSORS"),
+    ),
   );
-  heading.lastChild.className = "intro";
   const modes = el(
     "div",
     { class: "modebar" },

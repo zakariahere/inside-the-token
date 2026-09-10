@@ -2,6 +2,8 @@
 
 # Inside the Token
 
+<img src="frontend/assets/zak-hoodie.webp" alt="Pixel-art Zakaria in a navy hoodie, waving with a laptop" height="180">
+
 ### Understand an LLM, one operation at a time.
 
 An interactive textbook for **tokenization, embeddings, and attention**.<br>
@@ -25,7 +27,7 @@ Inside the Token turns those questions into small, interactive lessons inspired 
 - **Open the arithmetic.** Click an output component to reveal the products and sums behind it.
 - **Change one thing.** Compare scaled scores, causal masks, dropout draws, and attention heads.
 - **Connect it to code.** Expand the math, a focused PyTorch excerpt, or the actual full class.
-- **Learn at your pace.** Manual steps, optional checks, saved lesson positions, and a responsive light interface.
+- **Learn at your pace.** Manual steps, optional checks, saved lesson positions, and a responsive graphite interface.
 
 ```mermaid
 flowchart LR
@@ -40,10 +42,10 @@ flowchart LR
     M --> A[Softmax weights]
     A --> C[Weighted mixture]
     V --> C
-    style Q fill:#e5f3ed,stroke:#096b62,color:#096b62
-    style K fill:#faeee9,stroke:#ac4639,color:#ac4639
-    style V fill:#edf4e5,stroke:#447131,color:#447131
-    style C fill:#fbf2d9,stroke:#93600e,color:#93600e
+    style Q fill:#18294d,stroke:#a8c7ff,color:#f5f7fb
+    style K fill:#321d2b,stroke:#ff95a5,color:#f5f7fb
+    style V fill:#17352f,stroke:#74dfb1,color:#f5f7fb
+    style C fill:#332a18,stroke:#f4c56a,color:#f5f7fb
 ```
 
 > **Real arithmetic, clearly labeled examples.** The guided lessons distinguish hand-picked values, the book’s constants, random weights, and trained GPT-2 weights. Toy examples explain the mechanism; they do not demonstrate learned word meanings.
@@ -131,7 +133,7 @@ The numbers are small enough to check by hand. The operations are the same ones 
 | `llm_from_scratch/` | Book implementations, trace helpers, and GPT-2 weight mapping |
 | `app/` | API validation, tensor serialization, and the hand-picked teaching fixture |
 | `frontend/js/textbook/` | Lesson content, state, reusable components, and interactions |
-| `frontend/css/textbook.css` | Responsive light theme and reduced-motion styling |
+| `frontend/css/textbook.css` | Responsive zakaria.lu-inspired theme and reduced-motion styling |
 | `tests/` | Numerical contracts, API checks, reference comparisons, and browser QA notes |
 
 **Numerical details**
@@ -176,7 +178,7 @@ uv run pytest -q
 
 Refresh the browser after frontend edits. No bundle step is required.
 
-The latest local verification passed **44 tests**, including the original book-value and GPT-2 reference checks. GPT-2 tests skip when the checkpoint is unavailable; their first run may also need tokenizer/config assets from HuggingFace.
+The latest local verification passed **45 tests**, including the original book-value and GPT-2 reference checks. GPT-2 tests skip when the checkpoint is unavailable; their first run may also need tokenizer/config assets from HuggingFace.
 
 Browser checks cover all 44 guided steps, Explore views, arithmetic selection, scaling, dropout, Unicode text, error recovery, saved progress, and desktop/tablet/mobile layouts. See [the browser acceptance record](tests/browser-qa.md) for details and testing limits.
 
@@ -193,6 +195,6 @@ The original frontend modules remain in the tree for reference; the textbook ent
 
 ## Credits & scope
 
-This independent learning companion builds on Sebastian Raschka’s [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) material and uses [PyTorch](https://pytorch.org/), [tiktoken](https://github.com/openai/tiktoken), and GPT-2 weights from HuggingFace.
+This independent learning companion builds on Sebastian Raschka’s [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) material and uses [PyTorch](https://pytorch.org/), [tiktoken](https://github.com/openai/tiktoken), and GPT-2 weights from HuggingFace. Its graphite-and-electric-blue visual language and hoodie guide come from [Zakaria’s portfolio](https://zakaria.lu/).
 
 It covers the path through causal multi-head attention. Full transformer blocks, pretraining, fine-tuning, and complete text generation belong to later chapters.

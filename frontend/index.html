@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-brand-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1018" />
     <title>Inside the Token · An interactive LLM textbook</title>
     <meta
       name="description"
@@ -10,9 +11,15 @@
     />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%230c655e'/%3E%3Ctext x='20' y='28' text-anchor='middle' font-size='27' fill='white'%3Et%3C/text%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%230b1018'/%3E%3Cpath d='M8 12h24M8 20h16M8 28h24' stroke='%23315cfd' stroke-width='3'/%3E%3Ccircle cx='27' cy='20' r='3' fill='%23a8c7ff'/%3E%3C/svg%3E"
     />
-    <link rel="stylesheet" href="css/textbook.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/textbook.css?v=2" />
   </head>
   <body>
     <a class="skip" href="#main">Skip to lesson</a>
@@ -33,14 +40,14 @@
         <button id="menu" aria-expanded="false" aria-controls="sidebar">
           ☰ <span>Lessons</span></button
         ><span id="breadcrumb">THE FOUNDATIONS</span
-        ><span class="edition">A FIELD GUIDE TO LLMS <span>VOL. 01</span></span>
+        ><span class="edition">ZAKARIA’S LEARNING LAB <span>VOL. 01</span></span>
       </header>
       <main id="main" tabindex="-1"></main>
       <footer class="page-foot">
         <span>INSIDE THE TOKEN</span
-        ><span>Understand the operation. Then read the code.</span>
+        ><span>STAY CURIOUS. KEEP BUILDING.</span>
       </footer>
     </div>
-    <script type="module" src="js/textbook/app.js"></script>
+    <script type="module" src="js/textbook/app.js?v=2"></script>
   </body>
 </html>

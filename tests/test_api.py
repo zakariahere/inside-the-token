@@ -13,6 +13,18 @@ def test_health():
     assert r.json()["cuda"] is False
 
 
+def test_textbook_brand_assets_are_served():
+    page = client.get("/")
+    mascot = client.get("/assets/zak-hoodie.webp")
+
+    assert page.status_code == 200
+    assert "ZAKARIA’S LEARNING LAB" in page.text
+    assert "css/textbook.css?v=2" in page.text
+    assert mascot.status_code == 200
+    assert mascot.headers["content-type"] == "image/webp"
+    assert len(mascot.content) > 100_000
+
+
 def test_tokenize_book_sentence():
     r = client.post("/api/ch02/tokenize", json={})
     assert r.status_code == 200

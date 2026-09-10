@@ -26,3 +26,10 @@ Automated numeric and API coverage is in `test_lessons.py` plus the existing sui
 - Verified the `d_out = 3` to divisible `d_out = 2` handoff, the project/view/transpose shapes, both head selections, allowed and blocked key calculations, per-head Value sums, concatenation, and output-projection arithmetic.
 - Explore mode still renders custom random inputs and dropout results without stray placeholder text.
 - At 390 × 844, the recap and shape ladder stack cleanly; measured document width stays within the viewport with no page-wide horizontal overflow.
+
+## Zakaria visual identity · 2026-09-10
+
+- Matched the portfolio’s graphite surfaces, electric-blue emphasis, ice-blue secondary accents, technical mono labels, and geometric display type.
+- Loaded the approved 368 × 560 transparent WebP mascot at its native aspect ratio with descriptive alternative text.
+- Inspected the overview and multi-head lessons at 1280 × 720: the mascot remains clear beside the lesson introduction, cards retain strong contrast, and document width remains inside the viewport.
+- Rechecked the narrow-screen rules: navigation collapses, the mascot reduces to 106px and moves beside the title, lesson copy returns to full width, and large matrices keep their existing local scrollers.

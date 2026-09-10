@@ -18,3 +18,11 @@ Verified on 2026-09-09 using the Codex in-app browser against the local FastAPI 
 - Motion is manual; static review confirms the reduced-motion media rule disables transitions and animations. OS preference emulation was not available through the browser tool.
 
 Automated numeric and API coverage is in `test_lessons.py` plus the existing suite. GPT-2 availability and missing data are exercised with explicit error tests, without deleting local caches. The browser pass is a recorded acceptance check, not a headless test-runner dependency.
+
+## Multi-head lesson adaptation · 2026-09-10
+
+- Rechecked the revised six-step lesson against the latest single-head learning notes.
+- The recap preserves `The / river / bank / was` and identifies `muddy` as the last shifted target before switching fixtures.
+- Verified the `d_out = 3` to divisible `d_out = 2` handoff, the project/view/transpose shapes, both head selections, allowed and blocked key calculations, per-head Value sums, concatenation, and output-projection arithmetic.
+- Explore mode still renders custom random inputs and dropout results without stray placeholder text.
+- At 390 × 844, the recap and shape ladder stack cleanly; measured document width stays within the viewport with no page-wide horizontal overflow.

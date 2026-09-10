@@ -100,7 +100,7 @@ Core lessons work without this download. GPT-2 exploration runs embeddings and o
 | | Scores → softmax | Compare scaling, inspect stable softmax, and mix values. |
 | | Causal attention | Block future positions and watch the output change. |
 | | Dropout & batches | Resample masks, compare evaluation, and follow tensor axes. |
-| | Multiple heads | Split, attend, concatenate, and apply the output projection. |
+| | Multiple heads | Carry the known single-head pipeline into parallel feature slices, inspect one head’s arithmetic, concatenate, and apply the output projection. |
 
 Each guided lesson offers **See the math**, **See the PyTorch**, and one optional **prediction-and-reveal check**. Explore mode exposes custom text and relevant model controls.
 

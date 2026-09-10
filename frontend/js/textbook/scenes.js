@@ -845,8 +845,79 @@ function bankScene(id, s, r, update) {
   }
   return box;
 }
+function singleHeadBridge() {
+  const inputTokens = ["The", " river", " bank", " was"];
+  const route = ["Project Q/K/V", "Q · Kᵀ", "÷ √dₖ", "Causal mask", "Softmax", "Dropout", "× V"];
+  return el(
+    "div",
+    { class: "head-bridge" },
+    el(
+      "div",
+      { class: "notice" },
+      "Single-head checkpoint · the complete causal-attention route is already known.",
+    ),
+    el(
+      "div",
+      { class: "sequence-recap" },
+      el("span", { class: "recap-label" }, "INPUT POSITIONS"),
+      el(
+        "div",
+        { class: "tokens", "aria-label": "Single-head walkthrough input" },
+        inputTokens.map((name, index) =>
+          el(
+            "span",
+            { class: "token" + (index === 2 ? " selected" : "") },
+            name,
+          ),
+        ),
+      ),
+      el("span", { class: "arrow" }, "→"),
+      el("span", { class: "recap-label" }, "LAST TARGET"),
+      el("span", { class: "token target-token" }, " muddy"),
+    ),
+    el(
+      "div",
+      { class: "flow-strip", "aria-label": "Operations inside one attention head" },
+      route.map((label, index) => [
+        el("span", { class: "flow-step" }, label),
+        index < route.length - 1
+          ? el("span", { class: "flow-arrow", "aria-hidden": "true" }, "→")
+          : null,
+      ]),
+    ),
+    el(
+      "div",
+      { class: "head-fork" },
+      mini(
+        "One completed head",
+        el("span", { class: "axis" }, "[b, T, d_head]"),
+        p("One score row, one softmax row, and one context slice per query token."),
+      ),
+      el(
+        "div",
+        { class: "fork-mark", "aria-label": "Repeat the same operation in parallel" },
+        "same route × N →",
+      ),
+      el(
+        "div",
+        { class: "head-stack" },
+        el("div", { class: "head-pill head-zero" }, "HEAD 0 · full route"),
+        el("div", { class: "head-pill head-one" }, "HEAD 1 · full route"),
+      ),
+    ),
+    p(
+      "Multi-head attention changes how many learned feature slices run this route. Q and K still create each head’s routing weights; V still supplies each head’s payload.",
+    ),
+  );
+}
+
 function headsScene(s, r, update, all = false) {
-  const box = el("div", {}, focus(r.tokens, s, update));
+  const box = el("div");
+  if (s.step === 0 && !all) {
+    box.append(singleHeadBridge());
+    return box;
+  }
+  box.append(focus(r.tokens, s, update));
   s.head = Math.min(s.head, r.heads.length - 1);
   const h = r.heads[s.head],
     i = s.selected,
@@ -859,15 +930,57 @@ function headsScene(s, r, update, all = false) {
       `${cfg.num_heads} heads × ${cfg.head_dim} dimensions = ${cfg.d_out}`,
     ),
   );
-  if (s.step === 0 && !all)
+  if (s.step === 1 && !all)
     box.append(
-      mini(`Input · ${r.tokens[i]}`, vector(r.x.data[i])),
-      mini(
-        "Projected queries · before splitting",
-        vector(r.queries_flat.data[i], "q"),
+      el(
+        "div",
+        { class: "notice" },
+        "Fixture handoff · the running single-head example used d_out = 3. This guided example uses d_out = 2 because 2 ÷ 2 heads gives an integer head width of 1.",
+      ),
+      el(
+        "div",
+        { class: "two" },
+        mini(`Book input · ${r.tokens[i]}`, vector(r.x.data[i])),
+        mini(
+          "Projected query · before splitting",
+          vector(r.queries_flat.data[i], "q"),
+          p("Component 0 goes to head 0; component 1 goes to head 1."),
+        ),
       ),
     );
-  if (s.step >= 1 || all)
+  if (s.step >= 2 || all) {
+    if (!all && s.step === 2)
+      box.append(
+        el(
+          "div",
+          { class: "shape-ladder" },
+          mini(
+            "1 · Project",
+            el("span", { class: "axis" }, `[${cfg.batch}, ${cfg.num_tokens}, ${cfg.d_out}]`),
+            p("batch, tokens, total projected width"),
+          ),
+          el("span", { class: "shape-arrow", "aria-hidden": "true" }, "→"),
+          mini(
+            "2 · View",
+            el(
+              "span",
+              { class: "axis" },
+              `[${cfg.batch}, ${cfg.num_tokens}, ${cfg.num_heads}, ${cfg.head_dim}]`,
+            ),
+            p("add a head axis; values stay in the same order"),
+          ),
+          el("span", { class: "shape-arrow", "aria-hidden": "true" }, "→"),
+          mini(
+            "3 · Transpose",
+            el(
+              "span",
+              { class: "axis" },
+              `[${cfg.batch}, ${cfg.num_heads}, ${cfg.num_tokens}, ${cfg.head_dim}]`,
+            ),
+            p("put heads beside the batch so PyTorch runs them in parallel"),
+          ),
+        ),
+      );
     box.append(
       field("Selected head", s.head, (v) => update({ head: +v }), {
         options: r.heads.map((_, j) => [j, `Head ${j}`]),
@@ -880,10 +993,17 @@ function headsScene(s, r, update, all = false) {
         mini("Value slice", vector(h.values.data[i], "v")),
       ),
     );
+    if (!all && s.step === 2)
+      box.append(
+        p(
+          "These slices come from different rows of the trainable projection matrices. They are separate learned coordinates, even though one Linear layer computes them together.",
+        ),
+      );
+  }
   const shownWeights = cfg.training
     ? h.attn_weights_dropped.data[i]
     : h.attn_weights.data[i];
-  if (s.step >= 2 || all)
+  if (s.step >= 3 || all) {
     box.append(
       mini(
         `Where head ${s.head} attends for ${r.tokens[i]}`,
@@ -897,6 +1017,35 @@ function headsScene(s, r, update, all = false) {
           ? p("After training dropout; the row need not sum to one.")
           : null,
       ),
+    );
+    if (!all && s.step === 3)
+      box.append(
+        mini(
+          `Inspect one score · ${r.tokens[i]} → ${r.tokens[s.key]}`,
+          formula(
+            `${h.queries.data[i]
+              .map(
+                (value, component) =>
+                  `(${fmt(value)} × ${fmt(h.keys.data[s.key][component])})`,
+              )
+              .join(" + ")}\n= ${fmt(h.attn_scores.data[i][s.key])} raw score${s.key > i ? "\n→ future position → replace with −∞ → softmax weight 0" : "\n→ allowed position → keep before scaling and softmax"}`,
+            true,
+          ),
+        ),
+        mini(
+          `Collect Values in head ${s.head}`,
+          formula(
+            `${h.attn_weights.data[i]
+              .map(
+                (weight, key) =>
+                  `(${fmt(weight)} × ${fmt(h.values.data[key][0])})`,
+              )
+              .join(" + ")}\n≈ ${fmt(h.context_heads.data[i][0])}  ← this head’s context slice`,
+            true,
+          ),
+        ),
+      );
+    box.append(
       details(
         "Head attention matrix",
         matrix(
@@ -910,10 +1059,11 @@ function headsScene(s, r, update, all = false) {
         ),
       ),
     );
-  if (s.step >= 3 || all)
+  }
+  if (s.step >= 4 || all)
     box.append(
       mini(
-        "Each head contributes a slice",
+        `Each head’s context slice · ${r.tokens[i]}`,
         el(
           "div",
           { class: "tokens" },
@@ -929,7 +1079,7 @@ function headsScene(s, r, update, all = false) {
       ),
       mini("Concatenated context", vector(r.context_concat.data[i], "o")),
     );
-  if (s.step >= 4 || all) {
+  if (s.step >= 5 || all) {
     box.append(
       mini(
         "After output projection · select a component",

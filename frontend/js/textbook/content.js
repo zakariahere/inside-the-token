@@ -317,41 +317,45 @@ export const lessons = [
   {
     id: "heads",
     chapter: 3,
-    title: "Different heads. One output.",
+    title: "One head becomes many.",
     nav: "Multiple heads",
     section: "3.6",
     intro:
-      "One attention pattern is only one way to combine information. Split the projected dimensions into heads, let each head attend, then bring their outputs together.",
-    kind: "Book preset · new example with 2 heads",
+      "Keep the causal-attention operation you already know. Run it in parallel over different learned Q/K/V slices, then join the resulting context slices into one token representation.",
+    kind: "Single-head bridge · book-backed 2-head calculation",
     steps: [
       [
-        "Start with the book’s example",
-        "We now switch to Your / journey / starts / with / one / step. The book projects 3 input dimensions to 2 output dimensions, split into 2 heads of 1 dimension each.",
+        "Keep the pipeline you know",
+        "A head still performs the complete route: project Q/K/V, compare Q with K, scale, causally mask, softmax, optionally drop weights, then collect V. Multi-head attention repeats that route in parallel; it does not invent a new attention formula.",
       ],
       [
-        "Split the projected dimensions",
-        "Each head gets a slice of Q, K, and V. We split the feature dimension, not the token sequence. Each head still sees all allowed positions.",
+        "Make room for two equal heads",
+        "The single-head walkthrough used a projection width of 3. Three cannot be divided evenly between two heads, so this book-backed fixture uses a total output width of 2: two heads, one component per head. The numbers change here, but the operation stays the same.",
       ],
       [
-        "Compute attention per head",
-        "Select a head and a query token. Different projection slices can produce different attention patterns. Each head has its own scores and softmax.",
+        "Split features, keep every token",
+        "The view operation adds a head axis, then transpose moves that axis beside the batch. Tokens are not divided between heads: every head receives every token position, with its own Q/K/V feature slice.",
       ],
       [
-        "Concatenate the results",
-        "Put each head’s output components side by side. Concatenation restores the total output width: number of heads × head dimension.",
+        "Run the same attention in each head",
+        "Select a head, query token, and key token. The app exposes that head’s dot product, causal decision, softmax row, and weighted Value sum. Each head has an independent softmax row, while every head obeys the same causal mask.",
+      ],
+      [
+        "Concatenate the context slices",
+        "Each head returns one context slice for the selected token. Put the slices side by side, in head order, to restore the total output width: number of heads × head dimension.",
       ],
       [
         "Mix with the output projection",
-        "The final Linear layer combines the concatenated dimensions. Explore GPT-2’s 12 trained heads after understanding this small example.",
+        "The final Linear layer can mix information across the concatenated head components. The guided numbers use seeded random weights, so they demonstrate mechanics rather than learned linguistic roles. Explore GPT-2’s 12 trained heads afterward.",
       ],
     ],
-    math: "head_dim = d_out / num_heads\n[b, T, d_out] → [b, T, heads, head_dim]\n             → [b, heads, T, head_dim]\nattention per head → concatenate → output projection",
-    code: "keys = keys.view(b, T, heads, head_dim).transpose(1, 2)\nqueries = queries.view(b, T, heads, head_dim).transpose(1, 2)\nvalues = values.view(b, T, heads, head_dim).transpose(1, 2)\nscores = queries @ keys.transpose(2, 3)\n# Apply causal mask, scaling, softmax, and optional dropout.\ncontext = (weights @ values).transpose(1, 2)\ncontext = context.contiguous().view(b, T, d_out)\noutput = self.out_proj(context)",
+    math: "One head:\nContext_h(X) = Dropout(Softmax((Q_h K_hᵀ / √d_head) + M)) V_h\n\nhead_dim = d_out / num_heads\n[b, T, d_out] → [b, T, heads, head_dim]\n             → [b, heads, T, head_dim]\n\nAll heads run the same equation independently.\nConcatenate(Context_0, …, Context_h−1) → [b, T, d_out]\noutput = concatenated context @ W_outᵀ + bias",
+    code: "# One Linear layer stores all head-specific projection rows.\nqueries = self.W_query(x)  # [b, T, d_out]\nkeys = self.W_key(x)\nvalues = self.W_value(x)\n\nqueries = queries.view(b, T, self.num_heads, self.head_dim)\nqueries = queries.transpose(1, 2)  # [b, heads, T, head_dim]\n# Repeat the same reshape for K and V.\n\nscores = queries @ keys.transpose(2, 3)\nscores.masked_fill_(mask_bool, -torch.inf)\nweights = torch.softmax(scores / self.head_dim**0.5, dim=-1)\ncontext = (self.dropout(weights) @ values).transpose(1, 2)\ncontext = context.contiguous().view(b, T, self.d_out)\noutput = self.out_proj(context)",
     full: "MultiHeadAttention",
     question:
-      "With 12 heads and an output width of 768, how wide is each head?",
+      "When two heads process six tokens, does each head receive three tokens?",
     answer:
-      "64 components, because 768 ÷ 12 = 64. Each head operates over the sequence using its own 64-dimensional slices.",
+      "No. Both heads receive all six token positions. The feature width is divided: with d_out = 2 and two heads, each head receives one Q/K/V component per token. In GPT-2, 768 ÷ 12 gives 64 components per head.",
   },
 ];
 export const aliases = {

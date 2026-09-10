@@ -465,6 +465,105 @@ button:hover:not(:disabled) {
 .mini p:last-child {
   margin-bottom: 0;
 }
+.head-bridge > p:last-child {
+  color: var(--muted);
+  margin-bottom: 0;
+}
+.sequence-recap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 22px 0;
+}
+.sequence-recap .tokens {
+  margin: 0;
+}
+.recap-label {
+  font: 600 11px var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.target-token {
+  border-color: #e4d6aa;
+  background: var(--amber-soft);
+}
+.flow-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 16px;
+  background: #f6f7f2;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.flow-step {
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid var(--line);
+  font: 12px var(--mono);
+}
+.flow-step:first-child {
+  color: var(--teal);
+  border-color: #b8d7d1;
+}
+.flow-step:last-child {
+  color: var(--green);
+  border-color: #bfd6bf;
+}
+.flow-arrow,
+.shape-arrow {
+  color: #8f998f;
+}
+.head-fork {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin: 20px 0;
+}
+.fork-mark {
+  font: 12px var(--mono);
+  color: var(--muted);
+  text-align: center;
+}
+.head-stack {
+  display: grid;
+  gap: 10px;
+}
+.head-pill {
+  border: 1px solid var(--line);
+  border-left-width: 5px;
+  border-radius: 7px;
+  padding: 13px 15px;
+  background: white;
+  font: 600 12px var(--mono);
+}
+.head-zero {
+  border-left-color: var(--teal);
+}
+.head-one {
+  border-left-color: var(--coral);
+}
+.shape-ladder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.shape-ladder .mini {
+  padding: 14px;
+}
+.shape-ladder .axis {
+  margin: 6px 0 3px;
+}
+.shape-ladder p {
+  font-size: 13px;
+  color: var(--muted);
+}
 .q {
   --role: var(--teal);
   --soft: var(--teal-soft);
@@ -956,6 +1055,18 @@ code {
   .two,
   .projection-layout {
     grid-template-columns: 1fr;
+  }
+  .head-fork,
+  .shape-ladder {
+    grid-template-columns: 1fr;
+  }
+  .fork-mark,
+  .shape-arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+  .flow-arrow {
+    display: none;
   }
   .page-foot {
     padding: 20px;

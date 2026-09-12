@@ -77,3 +77,20 @@ MHA_FIELDS = ["x", "queries_flat", "keys_flat", "values_flat", "queries", "keys"
               "values", "attn_scores", "mask", "masked_scores", "attn_weights",
               "keep_mask", "attn_weights_dropped", "context_heads",
               "context_concat", "out_proj_weight", "out"]
+
+
+class Ch04SeedRequest(BaseModel):
+    seed: int = Field(default=123, ge=0, le=1_000_000)
+
+
+class Ch04BlockRequest(Ch04SeedRequest):
+    dropout: float = Field(default=0.0, ge=0.0, le=0.9)
+    train: bool = False
+
+
+class Ch04ModelRequest(Ch04SeedRequest):
+    text: str = Field(default="Every effort moves you", min_length=1, max_length=2000)
+
+
+class Ch04GenerateRequest(Ch04ModelRequest):
+    max_new_tokens: int = Field(default=4, ge=1, le=8)

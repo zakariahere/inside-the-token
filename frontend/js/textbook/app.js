@@ -41,6 +41,8 @@ function state(id) {
     heads: 2,
     source: "text",
     weights: "random",
+    max_new_tokens: 4,
+    generationStep: 0,
   });
 }
 function persist() {
@@ -74,6 +76,7 @@ function nav() {
             "01 / THE BIG PICTURE",
             "02 / WORKING WITH TEXT",
             "03 / ATTENTION",
+            "04 / BUILDING GPT",
           ][ch],
         ),
       );

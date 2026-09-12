@@ -6,7 +6,7 @@
 
 ### Understand an LLM, one operation at a time.
 
-An interactive textbook for **tokenization, embeddings, and attention**.<br>
+An interactive textbook for **tokenization, embeddings, attention, and GPT internals**.<br>
 Follow one token through real calculations, then connect the numbers to PyTorch.
 
 **Python 3.13 · PyTorch · FastAPI · Vanilla JavaScript · Runs locally**
@@ -21,7 +21,7 @@ Follow one token through real calculations, then connect the numbers to PyTorch.
 
 What happens to one token inside an attention layer? Where does each number come from? Why do we divide by a square root—and what changes when we hide future tokens?
 
-Inside the Token turns those questions into small, interactive lessons inspired by chapters 1–3 of Sebastian Raschka’s *Build a Large Language Model (From Scratch)*.
+Inside the Token turns those questions into small, interactive lessons inspired by chapters 1–4 of Sebastian Raschka’s *Build a Large Language Model (From Scratch)*.
 
 - **Follow one token.** Select a token, inspect its vectors, and see how its context changes.
 - **Open the arithmetic.** Click an output component to reveal the products and sums behind it.
@@ -42,6 +42,9 @@ flowchart LR
     M --> A[Softmax weights]
     A --> C[Weighted mixture]
     V --> C
+    C --> B[Transformer blocks]
+    B --> L[LayerNorm]
+    L --> O[Vocabulary logits]
     style Q fill:#18294d,stroke:#a8c7ff,color:#f5f7fb
     style K fill:#321d2b,stroke:#ff95a5,color:#f5f7fb
     style V fill:#17352f,stroke:#74dfb1,color:#f5f7fb
@@ -103,6 +106,13 @@ Core lessons work without this download. GPT-2 exploration runs embeddings and o
 | | Causal attention | Block future positions and watch the output change. |
 | | Dropout & batches | Resample masks, compare evaluation, and follow tensor axes. |
 | | Multiple heads | Carry the known single-head pipeline into parallel feature slices, inspect one head’s arithmetic, concatenate, and apply the output projection. |
+| **4 · Building GPT** | GPT blueprint | Map embeddings, repeated transformer blocks, final normalization, and vocabulary logits. |
+| | LayerNorm | Calculate row mean, population variance, epsilon, trainable scale, and shift. |
+| | GELU & feed-forward | Compare ReLU with GELU and follow the 4× expansion and contraction. |
+| | Shortcut connections | Compare real forward values and backward gradients with and without residual paths. |
+| | Transformer block | Assemble pre-norm attention and feed-forward branches with two residual additions. |
+| | Complete GPT model | Stack blocks, inspect logits, and explain the 163M versus 124M parameter counts. |
+| | Greedy generation | Crop context, select the last-position logits, append the argmax token, and repeat. |
 
 Each guided lesson offers **See the math**, **See the PyTorch**, and one optional **prediction-and-reveal check**. Explore mode exposes custom text and relevant model controls.
 
@@ -130,7 +140,7 @@ The numbers are small enough to check by hand. The operations are the same ones 
 
 | Layer | Responsibility |
 | :--- | :--- |
-| `llm_from_scratch/` | Book implementations, trace helpers, and GPT-2 weight mapping |
+| `llm_from_scratch/` | Book implementations for chapters 2–4, trace helpers, and GPT-2 weight mapping |
 | `app/` | API validation, tensor serialization, and the hand-picked teaching fixture |
 | `frontend/js/textbook/` | Lesson content, state, reusable components, and interactions |
 | `frontend/css/textbook.css` | Responsive zakaria.lu-inspired theme and reduced-motion styling |
@@ -157,8 +167,14 @@ The numbers are small enough to check by hand. The operations are the same ones 
 | `POST /api/ch03/self` | Trainable Q/K/V attention |
 | `POST /api/ch03/causal` | Causal masking and dropout |
 | `POST /api/ch03/mha` | Per-head attention and output projection |
+| `POST /api/ch04/layernorm` | LayerNorm mean, variance, normalized rows, scale, shift, and output |
+| `POST /api/ch04/feedforward` | ReLU/GELU comparison and both feed-forward Linear stages |
+| `POST /api/ch04/shortcuts` | Forward values and autograd gradients with and without shortcut connections |
+| `POST /api/ch04/block` | Every stage of a pre-norm transformer block |
+| `POST /api/ch04/model` | Tiny GPT forward trace, logits, shape map, and parameter counts |
+| `POST /api/ch04/generate` | Step-by-step greedy generation with context cropping |
 | `POST /api/lessons/bank-attention` | Full-precision hand-picked learning example |
-| `GET /api/lessons/code` | Actual source of the three attention classes |
+| `GET /api/lessons/code` | Actual source of the attention and Chapter 4 classes |
 
 The bank endpoint accepts `scaling`, `causal`, `dropout` (0–0.9), `training`, and `seed`. It returns inputs, projection matrices, Q/K/V, intermediate scores, softmax values, dropout masks, weighted contributions, and outputs. JSON represents negative infinity as `"-inf"`.
 
@@ -178,9 +194,9 @@ uv run pytest -q
 
 Refresh the browser after frontend edits. No bundle step is required.
 
-The latest local verification passed **45 tests**, including the original book-value and GPT-2 reference checks. GPT-2 tests skip when the checkpoint is unavailable; their first run may also need tokenizer/config assets from HuggingFace.
+The latest local verification passed **54 tests**, including the original book-value and GPT-2 reference checks plus Chapter 4 forward, gradient, parameter-count, and generation contracts. GPT-2 tests skip when the checkpoint is unavailable; their first run may also need tokenizer/config assets from HuggingFace.
 
-Browser checks cover all 44 guided steps, Explore views, arithmetic selection, scaling, dropout, Unicode text, error recovery, saved progress, and desktop/tablet/mobile layouts. See [the browser acceptance record](tests/browser-qa.md) for details and testing limits.
+Browser checks cover the guided steps, Explore views, arithmetic selection, scaling, dropout, Unicode text, error recovery, saved progress, and desktop/tablet/mobile layouts. See [the browser acceptance record](tests/browser-qa.md) for details and testing limits.
 
 ### Branches
 
@@ -197,4 +213,4 @@ The original frontend modules remain in the tree for reference; the textbook ent
 
 This independent learning companion builds on Sebastian Raschka’s [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch) material and uses [PyTorch](https://pytorch.org/), [tiktoken](https://github.com/openai/tiktoken), and GPT-2 weights from HuggingFace. Its graphite-and-electric-blue visual language and hoodie guide come from [Zakaria’s portfolio](https://zakaria.lu/).
 
-It covers the path through causal multi-head attention. Full transformer blocks, pretraining, fine-tuning, and complete text generation belong to later chapters.
+It covers the path through a complete, randomly initialized GPT architecture and greedy generation. Pretraining, fine-tuning, and useful generated language belong to later chapters.

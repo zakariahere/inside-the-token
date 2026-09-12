@@ -94,6 +94,15 @@ async function request(post, path, body) {
   return result;
 }
 const ch3 = ["attention", "qkv", "scores", "causal", "dropout", "heads"];
+const ch4 = [
+  "architecture",
+  "layernorm",
+  "gelu",
+  "shortcuts",
+  "transformer",
+  "gpt",
+  "generation",
+];
 export async function loadLesson(id, s, post) {
   const run = (path, body) => request(post, path, body);
   if (s.mode === "explore" && ch3.includes(id)) {
@@ -167,6 +176,31 @@ export async function loadLesson(id, s, post) {
       num_heads: 2,
       show_dims: 16,
     });
+  if (["layernorm", "gelu", "shortcuts"].includes(id))
+    return run(
+      "/ch04/" +
+        { layernorm: "layernorm", gelu: "feedforward", shortcuts: "shortcuts" }[
+          id
+        ],
+      { seed: s.mode === "learn" ? 123 : s.seed },
+    );
+  if (id === "transformer")
+    return run("/ch04/block", {
+      seed: s.mode === "learn" ? 123 : s.seed,
+      dropout: s.mode === "learn" ? 0 : s.dropout,
+      train: s.mode === "explore" && s.training,
+    });
+  if (["architecture", "gpt"].includes(id))
+    return run("/ch04/model", {
+      text: s.mode === "learn" ? "Every effort moves you" : s.text,
+      seed: s.mode === "learn" ? 123 : s.seed,
+    });
+  if (id === "generation")
+    return run("/ch04/generate", {
+      text: s.mode === "learn" ? "Every effort moves you" : s.text,
+      seed: s.mode === "learn" ? 123 : s.seed,
+      max_new_tokens: s.max_new_tokens,
+    });
 }
 export function controls(id, s, update) {
   const c = el("div", { class: "controls" }),
@@ -175,7 +209,8 @@ export function controls(id, s, update) {
   const set = (key) => (v) => update({ [key]: v });
   if (
     ["tokens", "windows", "embeddings"].includes(id) ||
-    (explore && ch3.includes(id))
+    (explore && ch3.includes(id)) ||
+    (explore && ["architecture", "gpt", "generation"].includes(id))
   )
     c.append(
       field("Your text", s.text, set("text"), { type: "text", wide: true }),
@@ -291,6 +326,29 @@ export function controls(id, s, update) {
     c.append(
       field("Divide scores by √d_k", s.scaling, set("scaling"), {
         type: "checkbox",
+      }),
+    );
+  if (explore && ch4.includes(id))
+    c.append(
+      field("Random seed", s.seed, set("seed"), { min: 0, max: 1000000 }),
+    );
+  if (explore && id === "transformer")
+    c.append(
+      field("Drop probability p", s.dropout, set("dropout"), {
+        min: 0,
+        max: 0.9,
+        step: 0.1,
+      }),
+      field("Training mode", s.training, set("training"), {
+        type: "checkbox",
+      }),
+      button("Resample dropout", () => update({ seed: s.seed + 1 })),
+    );
+  if (id === "generation")
+    c.append(
+      field("New tokens", s.max_new_tokens, set("max_new_tokens"), {
+        min: 1,
+        max: 8,
       }),
     );
   return c;
@@ -1105,6 +1163,312 @@ function headsScene(s, r, update, all = false) {
   }
   return box;
 }
+const shapeText = (tensor) => `[${tensor.shape.join(", ")}]`;
+const tokenRow = (tensor, token = 0) =>
+  tensor.data[0]?.[token] ?? tensor.data[token] ?? tensor.data;
+
+function architectureScene(s, r) {
+  const stages = [
+    ["Token + position", r.combined_embeddings],
+    ["2 transformer blocks", r.block_outputs.at(-1)],
+    ["Final LayerNorm", r.final_norm],
+    ["Vocabulary logits", r.logits],
+  ];
+  const [title, tensor] = stages[s.step];
+  return el(
+    "div",
+    {},
+    el(
+      "div",
+      { class: "pipeline" },
+      stages.map(([name, value], i) =>
+        el(
+          "div",
+          { class: "pipeline-box" + (i === s.step ? " active" : "") },
+          el("span", { class: "stage-no" }, `0${i + 1}`),
+          el("h3", {}, name),
+          p(shapeText(value)),
+        ),
+      ),
+    ),
+    mini(
+      title,
+      s.step === 3
+        ? p("One score for every GPT-2 vocabulary entry at every position.")
+        : vector(tokenRow(tensor, Math.min(1, r.tokens.length - 1)), "o"),
+    ),
+    details(
+      "Tiny ↔ GPT-2 124M map",
+      matrix(
+        r.architecture.shape_map.map((row) => [row.tiny, row.gpt2_124m]),
+        {
+          rowNames: r.architecture.shape_map.map((row) => row.name),
+          colNames: ["tiny", "GPT-2 124M"],
+          label: "Tiny and GPT-2 architecture dimensions",
+        },
+      ),
+    ),
+  );
+}
+
+function layerNormScene(s, r, update) {
+  const selected = Math.max(0, Math.min(s.selected, 1));
+  const choose = focus(["example 0", "example 1"], { ...s, selected }, update);
+  const row = (name) => r[name].data[selected];
+  const mean = r.mean.data[selected][0];
+  const variance = r.variance.data[selected][0];
+  const box = el("div", {}, choose);
+  if (s.step === 0)
+    box.append(
+      mini("Linear + ReLU activations", matrix(r.linear_relu.data, {
+        rowNames: ["example 0", "example 1"],
+        label: "Activation rows before LayerNorm",
+        selectedRow: selected,
+      })),
+    );
+  if (s.step === 1)
+    box.append(
+      mini("Selected row", vector(row("linear_relu"), "q")),
+      formula(`${row("linear_relu").map(fmt).join(" + ")}\n──────────── = ${fmt(mean)}\n      6`, true),
+      mini("After subtracting the mean", vector(row("centered"), "k")),
+    );
+  if (s.step === 2)
+    box.append(
+      formula(`population variance = ${fmt(variance)}\nε = ${r.eps}\ndivisor = √(${fmt(variance)} + ${r.eps})`, true),
+      mini("Normalized row", vector(row("normalized"), "o")),
+    );
+  if (s.step === 3)
+    box.append(
+      el("div", { class: "three" },
+        mini("Trainable scale", vector(r.scale.data, "q")),
+        mini("Trainable shift", vector(r.shift.data, "k")),
+        mini("LayerNorm output", vector(row("output"), "o")),
+      ),
+      formula(`output[0] = ${fmt(r.scale.data[0])} × ${fmt(row("normalized")[0])} + ${fmt(r.shift.data[0])}\n= ${fmt(row("output")[0])}`, true),
+    );
+  if (s.step === 4)
+    box.append(
+      matrix([
+        [r.output_mean.data[0][0], r.output_variance.data[0][0]],
+        [r.output_mean.data[1][0], r.output_variance.data[1][0]],
+      ], {
+        rowNames: ["example 0", "example 1"],
+        colNames: ["mean", "population variance"],
+        label: "LayerNorm output checks",
+      }),
+      el("div", { class: "notice" }, "Variance is close to one rather than exactly one because ε is included in the divisor."),
+    );
+  return box;
+}
+
+function geluScene(s, r, update) {
+  const selected = Math.max(0, Math.min(s.selected, 1));
+  const component = Math.max(0, Math.min(s.component, 15));
+  const box = el("div");
+  if (s.step === 0)
+    box.append(
+      matrix(r.curve_x.data.map((x, i) => [r.relu_curve.data[i], r.gelu_curve.data[i]]), {
+        rowNames: r.curve_x.data.map((x) => `x = ${fmt(x, 1)}`),
+        colNames: ["ReLU(x)", "GELU(x)"],
+        label: "ReLU and GELU comparison",
+      }),
+    );
+  else {
+    box.append(focus(["token 0", "token 1"], { ...s, selected }, update));
+    if (s.step === 1)
+      box.append(
+        mini("Input · [1, 2, 4]", vector(r.input.data[0][selected], "q")),
+        formula("Linear(4, 16)", true),
+        mini("Expanded · [1, 2, 16]", vector(r.expanded.data[0][selected], "k")),
+      );
+    if (s.step === 2) {
+      const before = r.expanded.data[0][selected][component];
+      const after = r.activated.data[0][selected][component];
+      box.append(
+        mini("Select one expanded component", vector(r.expanded.data[0][selected], "k", (i) => update({ component: i }), component)),
+        formula(`GELU(${fmt(before)}) ≈ ${fmt(after)}`, true),
+        mini("All sixteen activated independently", vector(r.activated.data[0][selected], "o")),
+      );
+    }
+    if (s.step === 3)
+      box.append(
+        mini("Activated · [1, 2, 16]", vector(r.activated.data[0][selected], "k")),
+        formula("Linear(16, 4)", true),
+        mini("Output · [1, 2, 4]", vector(r.output.data[0][selected], "o")),
+      );
+  }
+  return box;
+}
+
+function shortcutsScene(s, r, update) {
+  const layer = Math.max(0, Math.min(s.component, 3));
+  const picker = el(
+    "div",
+    { class: "tokens", role: "group", "aria-label": "Select a shortcut layer" },
+    [0, 1, 2, 3].map((i) =>
+      button(`Layer ${i + 1}`, () => update({ component: i }), {
+        class: "token" + (layer === i ? " selected" : ""),
+        "aria-pressed": String(layer === i),
+      }),
+    ),
+  );
+  const box = el("div");
+  if (s.step === 0)
+    box.append(
+      el("div", { class: "pipeline" }, r.plain_stages.map((stage, i) =>
+        el("div", { class: "pipeline-box" }, el("span", { class: "stage-no" }, `0${i + 1}`), el("h3", {}, `Layer ${i + 1}`), p(vectorText(stage.output.data[0]))),
+      )),
+      el("div", { class: "notice" }, "Plain route: every output fully replaces the previous x."),
+    );
+  if (s.step === 1) {
+    const stage = r.shortcut_stages[layer];
+    const output = stage.output.data[0];
+    const branch = stage.layer_output.data[0];
+    const input = output.map((v, i) => v - branch[i]);
+    box.append(
+      picker,
+      el("div", { class: "three" },
+        mini("Saved x", vector(input, "q")),
+        mini("layer(x)", vector(branch, "k")),
+        mini("x + layer(x)", vector(output, "o")),
+      ),
+      formula(`${fmt(input[0])} + ${fmt(branch[0])} = ${fmt(output[0])}  ← component 0`, true),
+    );
+  }
+  if (s.step === 2)
+    box.append(
+      el("div", { class: "two" },
+        mini("Plain network", p(`output ${vectorText(r.plain_output.data[0])}`), p(`MSE loss ${fmt(r.plain_loss.data)}`)),
+        mini("With shortcuts", p(`output ${vectorText(r.shortcut_output.data[0])}`), p(`MSE loss ${fmt(r.shortcut_loss.data)}`)),
+      ),
+      formula("loss.backward() computes ∂loss / ∂weight for every Linear layer", true),
+    );
+  if (s.step === 3)
+    box.append(
+      matrix(r.plain_gradients.data.map((v, i) => [v, r.shortcut_gradients.data[i]]), {
+        rowNames: r.plain_gradients.data.map((_, i) => `Linear ${i + 1}`),
+        colNames: ["plain |gradient| mean", "shortcut |gradient| mean"],
+        label: "Actual gradient means with and without shortcuts",
+      }),
+    );
+  return box;
+}
+
+function transformerScene(s, r, update) {
+  const selected = Math.max(0, Math.min(s.selected, r.tokens.length - 1));
+  const stages = r.stages;
+  const box = el("div", {}, focus(r.tokens, { ...s, selected }, update));
+  const card = (title, name, role = "o") =>
+    mini(`${title} · ${shapeText(stages[name])}`, vector(tokenRow(stages[name], selected), role));
+  if (s.step === 0)
+    box.append(el("div", { class: "two" }, card("Input", "input", "q"), card("Saved shortcut", "shortcut1", "q")));
+  if (s.step === 1)
+    box.append(
+      el("div", { class: "three" }, card("LayerNorm 1", "norm1", "q"), card("Attention branch", "attention_dropped", "k"), card("After addition", "after_attention", "o")),
+      formula(`${fmt(tokenRow(stages.shortcut1, selected)[0])} + ${fmt(tokenRow(stages.attention_dropped, selected)[0])} = ${fmt(tokenRow(stages.after_attention, selected)[0])}`, true),
+    );
+  if (s.step === 2)
+    box.append(el("div", { class: "two" }, card("Attention result", "after_attention", "o"), card("Second shortcut", "shortcut2", "q")));
+  if (s.step === 3)
+    box.append(
+      el("div", { class: "three" }, card("LayerNorm 2", "norm2", "q"), card("Feed-forward branch", "feed_forward_dropped", "k"), card("Block output", "output", "o")),
+      formula(`${fmt(tokenRow(stages.shortcut2, selected)[0])} + ${fmt(tokenRow(stages.feed_forward_dropped, selected)[0])} = ${fmt(tokenRow(stages.output, selected)[0])}`, true),
+    );
+  if (s.step === 4)
+    box.append(
+      matrix(Object.entries(stages).map(([_, tensor]) => tensor.shape), {
+        rowNames: Object.keys(stages),
+        colNames: ["batch", "tokens", "embedding"],
+        label: "Shape preserved through transformer block",
+      }),
+    );
+  return box;
+}
+
+function gptScene(s, r, update) {
+  const selected = Math.max(0, Math.min(s.selected, r.tokens.length - 1));
+  const box = el("div", {}, focus(r.tokens, { ...s, selected }, update));
+  if (s.step === 0)
+    box.append(
+      el("div", { class: "three" },
+        mini("Token embedding", vector(tokenRow(r.token_embeddings, selected), "q")),
+        mini("Position embedding", vector(r.position_embeddings.data[selected], "k")),
+        mini("Element-wise sum", vector(tokenRow(r.combined_embeddings, selected), "o")),
+      ),
+      formula(`${fmt(tokenRow(r.token_embeddings, selected)[0])} + ${fmt(r.position_embeddings.data[selected][0])} = ${fmt(tokenRow(r.combined_embeddings, selected)[0])}`, true),
+    );
+  if (s.step === 1)
+    box.append(
+      el("div", { class: "pipeline" }, r.block_outputs.map((tensor, i) =>
+        el("div", { class: "pipeline-box" }, el("span", { class: "stage-no" }, `0${i + 1}`), el("h3", {}, `Transformer block ${i + 1}`), p(shapeText(tensor)), vector(tokenRow(tensor, selected), "o")),
+      )),
+    );
+  if (s.step === 2)
+    box.append(mini(`Final LayerNorm · ${shapeText(r.final_norm)}`, vector(tokenRow(r.final_norm, selected), "o")));
+  if (s.step === 3)
+    box.append(
+      formula(`${shapeText(r.final_norm)} → Linear(4, 50257) → ${shapeText(r.logits)}`, true),
+      mini("Largest logits at the final position", matrix(r.top_last_position.map((item) => [item.id, item.logit]), {
+        rowNames: r.top_last_position.map((item) => item.token.replaceAll(" ", "␣")),
+        colNames: ["token ID", "logit"],
+        label: "Largest random-model logits",
+      })),
+      el("div", { class: "notice" }, "These rankings come from random weights. They demonstrate the output contract, not language ability."),
+    );
+  if (s.step === 4) {
+    const counts = r.architecture.parameter_counts;
+    box.append(
+      matrix(Object.entries(r.parameter_groups).map(([_, count]) => [count]), {
+        rowNames: Object.keys(r.parameter_groups),
+        colNames: ["tiny parameters"],
+        label: "Parameters by top-level module",
+      }),
+      el("div", { class: "two" },
+        mini("Book implementation · separate output head", p(counts.gpt2_book_untied.toLocaleString())),
+        mini("GPT-2 count · tied embedding/output weights", p(counts.gpt2_with_weight_tying.toLocaleString())),
+      ),
+    );
+  }
+  return box;
+}
+
+function generationScene(s, r, update) {
+  const selected = Math.max(0, Math.min(s.generationStep, r.steps.length - 1));
+  const current = r.steps[selected];
+  const picker = el(
+    "div",
+    { class: "tokens", role: "group", "aria-label": "Select a generation iteration" },
+    r.steps.map((step, i) => button(`Iteration ${step.step}`, () => update({ generationStep: i }), {
+      class: "token" + (selected === i ? " selected" : ""),
+      "aria-pressed": String(selected === i),
+    })),
+  );
+  const box = el("div", {}, picker);
+  if (s.step === 0)
+    box.append(
+      tokens(current.context_tokens.map((t) => t.replaceAll(" ", "␣")), current.context_tokens.length - 1, () => {}),
+      formula(`context IDs = [${current.context_ids.join(", ")}]\nkept ${current.context_ids.length} of at most ${r.config.context_length} positions`, true),
+    );
+  if (s.step === 1)
+    box.append(
+      formula(`model(context) → [1, ${current.context_ids.length}, 50257]\nselect [:, -1, :] → [${current.logits_shape.join(", ")}]`, true),
+    );
+  if (s.step === 2)
+    box.append(
+      bars(current.top_candidates.map((c) => c.token.replaceAll(" ", "␣")), current.top_candidates.map((c) => c.probability), {
+        max: current.top_candidates[0].probability,
+      }),
+      formula(`argmax → ID ${current.chosen_id} → ${JSON.stringify(current.chosen_token)}`, true),
+    );
+  if (s.step === 3)
+    box.append(
+      formula(`cat(ids, [[${current.chosen_id}]], dim=1)`, true),
+      mini("Decoded sequence after all iterations", p(r.generated_text)),
+      el("div", { class: "notice" }, r.warning),
+    );
+  return box;
+}
+
 function explorer(s, data, update) {
   const { result: r, endpoint } = data,
     box = el("div");
@@ -1160,6 +1524,13 @@ function explorer(s, data, update) {
 }
 export function lessonView(id, s, data, update) {
   if (data?.explorer) return explorer(s, data, update);
+  if (id === "architecture") return architectureScene(s, data);
+  if (id === "layernorm") return layerNormScene(s, data, update);
+  if (id === "gelu") return geluScene(s, data, update);
+  if (id === "shortcuts") return shortcutsScene(s, data, update);
+  if (id === "transformer") return transformerScene(s, data, update);
+  if (id === "gpt") return gptScene(s, data, update);
+  if (id === "generation") return generationScene(s, data, update);
   if (id === "tokens") return tokenScene(s, data, update);
   if (id === "windows") return windowsScene(s, data, update);
   if (id === "embeddings") return embeddingScene(s, data, update);

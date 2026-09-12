@@ -33,3 +33,12 @@ Automated numeric and API coverage is in `test_lessons.py` plus the existing sui
 - Loaded the approved 368 × 560 transparent WebP mascot at its native aspect ratio with descriptive alternative text.
 - Inspected the overview and multi-head lessons at 1280 × 720: the mascot remains clear beside the lesson introduction, cards retain strong contrast, and document width remains inside the viewport.
 - Rechecked the narrow-screen rules: navigation collapses, the mascot reduces to 106px and moves beside the title, lesson copy returns to full width, and large matrices keep their existing local scrollers.
+
+## Chapter 4 · 2026-09-12
+
+- Walked all 35 guided steps across the seven new lessons: GPT blueprint, LayerNorm, GELU/feed-forward, shortcut connections, transformer block, complete GPT, and greedy generation. Every step rendered its completed API result without an error panel.
+- Verified every Chapter 4 Explore view. Seed controls recomputed the fixed lessons; transformer controls ran with dropout 0.5 in training mode; custom generation accepted `Layer norms work`, produced eight selectable iterations, and retained the prompt in the decoded output.
+- Opened the live `TransformerBlock` source disclosure and confirmed it contains both pre-normalization paths, attention/feed-forward calls, dropout calls, and shortcut additions from the backend class.
+- Checked the browser console after the full pass; it contained no warnings or errors.
+- At 390 × 844, checked each lesson's final step. Every document width remained 375px inside the 390px viewport, with zero error panels and local scrolling retained for tables.
+- Reset the viewport and visually inspected the transformer lesson at desktop size: Chapter 4 navigation, mascot, step track, token controls, shape table, contrast, and spacing render cleanly.

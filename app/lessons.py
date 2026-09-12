@@ -6,6 +6,8 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from llm_from_scratch.ch03_attention import CausalAttention, MultiHeadAttention, SelfAttention_v2
+from llm_from_scratch.ch04_gpt import (FeedForward, GELU, GPTModel, LayerNorm,
+                                      TransformerBlock, generate_text_simple)
 from llm_from_scratch.trace import trace_self_attention
 
 router = APIRouter(prefix="/api/lessons")
@@ -69,4 +71,8 @@ def bank_attention(req: BankRequest):
 
 @router.get("/code")
 def lesson_code():
-    return {cls.__name__: inspect.getsource(cls) for cls in (SelfAttention_v2, CausalAttention, MultiHeadAttention)}
+    classes = (SelfAttention_v2, CausalAttention, MultiHeadAttention, LayerNorm,
+               GELU, FeedForward, TransformerBlock, GPTModel)
+    source = {cls.__name__: inspect.getsource(cls) for cls in classes}
+    source["generate_text_simple"] = inspect.getsource(generate_text_simple)
+    return source

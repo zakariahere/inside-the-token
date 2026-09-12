@@ -1,4 +1,4 @@
-"""FastAPI app: runs the book's chapter 2/3 code and returns every intermediate."""
+"""FastAPI app: runs the book's chapter 2-4 code and returns every intermediate."""
 from pathlib import Path
 
 import torch
@@ -11,13 +11,19 @@ from llm_from_scratch.ch02_data import (build_embeddings, create_dataloader_v1,
                                         embed_batch, get_tokenizer)
 from llm_from_scratch.ch03_attention import (CausalAttention, MultiHeadAttention,
                                              SelfAttention_v2)
+from llm_from_scratch.ch04_gpt import (GPT_CONFIG_124M, TINY_GPT_CONFIG,
+                                      GPTModel, parameter_count)
+from llm_from_scratch.ch04_trace import (trace_feed_forward, trace_gpt,
+                                         trace_layer_norm, trace_shortcuts,
+                                         trace_transformer_block)
 from llm_from_scratch.trace import (trace_causal, trace_multihead,
                                     trace_self_attention, trace_simple)
 
 from . import registry
 from .lessons import router as lesson_router
-from .schemas import (MAX_TOKENS, MHA_FIELDS, CausalRequest, EmbedRequest,
-                      MHARequest, SelfAttnRequest, SimpleRequest,
+from .schemas import (MAX_TOKENS, MHA_FIELDS, CausalRequest, Ch04BlockRequest,
+                      Ch04GenerateRequest, Ch04ModelRequest, Ch04SeedRequest,
+                      EmbedRequest, MHARequest, SelfAttnRequest, SimpleRequest,
                       TokenizeRequest, WindowsRequest)
 from .serialize import tensor_to_json as tj
 
@@ -262,6 +268,171 @@ def mha(req: MHARequest):
         heads.append(hd)
     out["heads"] = heads
     return out
+
+
+# ----------------------------- chapter 4 ----------------------------------- #
+def _ch04_config(dropout=0.0):
+    cfg = dict(TINY_GPT_CONFIG)
+    cfg["drop_rate"] = dropout
+    return cfg
+
+
+def _ch04_tokens(text, context_length=8):
+    ids = registry.encode(text)
+    if not ids:
+        raise HTTPException(400, "text must contain at least one token")
+    ids = ids[:context_length]
+    return torch.tensor([ids]), registry.token_strings(ids)
+
+
+def _chapter_map(tiny_model=None):
+    tiny_count = (sum(p.numel() for p in tiny_model.parameters())
+                  if tiny_model is not None else parameter_count(TINY_GPT_CONFIG))
+    return {
+        "tiny_config": TINY_GPT_CONFIG,
+        "gpt2_124m_config": GPT_CONFIG_124M,
+        "parameter_counts": {
+            "tiny_untied": tiny_count,
+            "gpt2_book_untied": parameter_count(GPT_CONFIG_124M),
+            "gpt2_with_weight_tying": parameter_count(GPT_CONFIG_124M, tied_output=True),
+        },
+        "shape_map": [
+            {"name": "embedding width", "tiny": 4, "gpt2_124m": 768},
+            {"name": "attention heads", "tiny": 2, "gpt2_124m": 12},
+            {"name": "head width", "tiny": 2, "gpt2_124m": 64},
+            {"name": "feed-forward width", "tiny": 16, "gpt2_124m": 3072},
+            {"name": "transformer blocks", "tiny": 2, "gpt2_124m": 12},
+            {"name": "context length", "tiny": 8, "gpt2_124m": 1024},
+            {"name": "vocabulary logits", "tiny": 50257, "gpt2_124m": 50257},
+        ],
+    }
+
+
+@app.post("/api/ch04/layernorm")
+@torch.inference_mode()
+def ch04_layernorm(req: Ch04SeedRequest):
+    t = trace_layer_norm(req.seed)
+    return {k: (tj(v) if torch.is_tensor(v) else v) for k, v in t.items()}
+
+
+@app.post("/api/ch04/feedforward")
+@torch.inference_mode()
+def ch04_feedforward(req: Ch04SeedRequest):
+    t = trace_feed_forward(TINY_GPT_CONFIG, req.seed)
+    return {
+        "config": TINY_GPT_CONFIG,
+        **{k: tj(v, max_rows=16, max_cols=16) for k, v in t.items()},
+    }
+
+
+@app.post("/api/ch04/shortcuts")
+def ch04_shortcuts(req: Ch04SeedRequest):
+    t = trace_shortcuts(req.seed)
+    out = {}
+    for key, value in t.items():
+        if key.endswith("_stages"):
+            out[key] = [
+                {k: tj(v) if torch.is_tensor(v) else v for k, v in stage.items()}
+                for stage in value
+            ]
+        else:
+            out[key] = tj(value) if torch.is_tensor(value) else value
+    return out
+
+
+@app.post("/api/ch04/block")
+@torch.inference_mode()
+def ch04_block(req: Ch04BlockRequest):
+    cfg = _ch04_config(req.dropout)
+    torch.manual_seed(req.seed)
+    x = torch.randn(1, 4, cfg["emb_dim"])
+    _module, t = trace_transformer_block(cfg, x, req.seed, req.train)
+    return {
+        "tokens": ["Every", " effort", " moves", " you"],
+        "config": cfg,
+        "training": req.train,
+        "stages": {k: tj(v, max_cols=16) for k, v in t.items()},
+    }
+
+
+@app.post("/api/ch04/model")
+@torch.inference_mode()
+def ch04_model(req: Ch04ModelRequest):
+    cfg = _ch04_config()
+    token_ids, tokens = _ch04_tokens(req.text, cfg["context_length"])
+    torch.manual_seed(req.seed)
+    model = GPTModel(cfg)
+    model.eval()
+    t = trace_gpt(model, token_ids)
+    last_logits = t["logits"][0, -1]
+    top_logits, top_ids = torch.topk(last_logits, 5)
+    grouped = {}
+    for name, parameter in model.named_parameters():
+        group = name.split(".")[0]
+        grouped[group] = grouped.get(group, 0) + parameter.numel()
+    return {
+        "text": req.text,
+        "token_ids": token_ids[0].tolist(),
+        "tokens": tokens,
+        "architecture": _chapter_map(model),
+        "parameter_groups": grouped,
+        "token_embeddings": tj(t["token_embeddings"], max_cols=16),
+        "position_embeddings": tj(t["position_embeddings"], max_cols=16),
+        "combined_embeddings": tj(t["combined_embeddings"], max_cols=16),
+        "after_embedding_dropout": tj(t["after_embedding_dropout"], max_cols=16),
+        "block_outputs": [tj(v, max_cols=16) for v in t["block_outputs"]],
+        "final_norm": tj(t["final_norm"], max_cols=16),
+        "logits": tj(t["logits"], max_cols=12),
+        "top_last_position": [
+            {"id": int(i), "token": registry.token_strings([int(i)])[0],
+             "logit": round(float(logit), 4)}
+            for logit, i in zip(top_logits, top_ids)
+        ],
+    }
+
+
+@app.post("/api/ch04/generate")
+@torch.inference_mode()
+def ch04_generate(req: Ch04GenerateRequest):
+    cfg = _ch04_config()
+    input_ids = registry.encode(req.text)
+    if not input_ids:
+        raise HTTPException(400, "text must contain at least one token")
+    torch.manual_seed(req.seed)
+    model = GPTModel(cfg)
+    model.eval()
+    idx = torch.tensor([input_ids])
+    steps = []
+    for step in range(req.max_new_tokens):
+        idx_cond = idx[:, -cfg["context_length"]:]
+        logits = model(idx_cond)[:, -1, :]
+        probas = torch.softmax(logits, dim=-1)
+        top_probas, top_ids = torch.topk(probas[0], 3)
+        chosen = int(top_ids[0])
+        steps.append({
+            "step": step + 1,
+            "context_ids": idx_cond[0].tolist(),
+            "context_tokens": registry.token_strings(idx_cond[0].tolist()),
+            "logits_shape": list(logits.shape),
+            "top_candidates": [
+                {"id": int(i), "token": registry.token_strings([int(i)])[0],
+                 "probability": round(float(prob), 8)}
+                for prob, i in zip(top_probas, top_ids)
+            ],
+            "chosen_id": chosen,
+            "chosen_token": registry.token_strings([chosen])[0],
+        })
+        idx = torch.cat((idx, torch.tensor([[chosen]])), dim=1)
+    tokenizer = get_tokenizer()
+    return {
+        "warning": "Random weights: this demonstrates mechanics, not learned language.",
+        "config": cfg,
+        "prompt": req.text,
+        "input_ids": input_ids,
+        "steps": steps,
+        "output_ids": idx[0].tolist(),
+        "generated_text": tokenizer.decode(idx[0].tolist()),
+    }
 
 
 # static frontend last so /api/* wins
